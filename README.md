@@ -28,8 +28,8 @@ Open source 5G UE and RAN (gNodeB) simulator. This tool can be used as UE/RAN em
 - gNB | NAS Transport
   - Initial UE Message
   - Uplink/Downlink NAS Transport
-- PDU Session Establishment
-  - ***in progress***
+- Session Management
+  - PDU Session Establishment
 - ***todo...***
       
 ##  Requirements
@@ -71,7 +71,16 @@ This error usually happens if you are using some Linux VM container in Windows. 
 
 If you are using physical Linux machine, but still encounter this issue, make sure that you have Ubuntu 16.04 or later.
 
-**Q2. I can't build native libraries.**
+**Q2. Why am I getting java.net.ConnectException: Connection refused exception?**  
+
+This error means SCTP connection could not established between RAN and AMF. Therefore make sure these 3 following conditions:
+
+1. AMF is running and listening NGAP port (38412).
+2. AMF's NGAP IP address and port number exactly matches with gnb.yaml config file.
+3. AMF is reachable by RAN over the network. (Firewall etc.)
+  
+
+**Q3. I can't build native libraries.**
 
 Make sure that you set the `JAVA_HOME` environment variable, and have correct version of gcc/g++. You can check the current version with `gcc -v`. In order to upgrade gcc/g++ run the following command:
 ```
@@ -80,10 +89,10 @@ sudo apt upgrade
 sudo apt install g++
 ``` 
 
-**Q3. How to increase the number of UE and RANs?**
+**Q4. How to increase the number of UE and RANs?**
 
 In order to increase the number of UEs, you can change the `number-of-UE` value in `config/testing.yaml`. Multiple RAN feature is in progress now.
 
-**Q4. Are user plane functionalities supported?**
+**Q5. Are user plane functionalities supported?**
 
 Not yet, but in progress now. 

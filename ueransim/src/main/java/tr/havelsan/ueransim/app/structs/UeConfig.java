@@ -26,7 +26,6 @@ package tr.havelsan.ueransim.app.structs;
 
 import tr.havelsan.ueransim.nas.impl.ies.IEDnn;
 import tr.havelsan.ueransim.nas.impl.ies.IESNssai;
-import tr.havelsan.ueransim.ngap1.UserLocationInformationNr;
 import tr.havelsan.ueransim.utils.octets.OctetString;
 
 public class UeConfig {
@@ -39,21 +38,24 @@ public class UeConfig {
 
     public final boolean smsOverNasSupported;
     public final IESNssai[] requestedNssai;
-    public final UserLocationInformationNr userLocationInformationNr;
     public final IEDnn dnn;
 
-    public UeConfig(String snn, String key, String op, String amf, String imei, String supi,
-                    boolean smsOverNasSupported, IESNssai[] requestedNssai,
-                    UserLocationInformationNr userLocationInformationNr, String dnn) {
+    public UeConfig(String snn, OctetString key, OctetString op, OctetString amf, String imei, Supi supi,
+                    boolean smsOverNasSupported, IESNssai[] requestedNssai, IEDnn dnn) {
         this.snn = snn;
-        this.key = new OctetString(key);
-        this.op = new OctetString(op);
-        this.amf = new OctetString(amf);
+        this.key = key;
+        this.op = op;
+        this.amf = amf;
         this.imei = imei;
-        this.supi = Supi.parse(supi);
+        this.supi = supi;
         this.smsOverNasSupported = smsOverNasSupported;
         this.requestedNssai = requestedNssai;
-        this.userLocationInformationNr = userLocationInformationNr;
-        this.dnn = new IEDnn(dnn);
+        this.dnn = dnn;
+    }
+
+    public UeConfig(String snn, String key, String op, String amf, String imei, String supi,
+                    boolean smsOverNasSupported, IESNssai[] requestedNssai, String dnn) {
+        this(snn, new OctetString(key), new OctetString(op), new OctetString(amf), imei,
+                Supi.parse(supi), smsOverNasSupported, requestedNssai, new IEDnn(dnn));
     }
 }
