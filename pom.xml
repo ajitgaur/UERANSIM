@@ -42,6 +42,8 @@
         <module>control</module>
         <module>ueransim</module>
         <module>crypto</module>
+        <module>gtp</module>
+        <module>itms</module>
     </modules>
 
     <build>
@@ -86,7 +88,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>tr.havelsan.ueransim.app.Program</mainClass>
+                            <mainClass>tr.havelsan.ueransim.app.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -106,7 +108,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>tr.havelsan.ueransim.app.Program</mainClass>
+                                    <mainClass>tr.havelsan.ueransim.app.Main</mainClass>
                                 </transformer>
                             </transformers>
                             <filters>
@@ -146,6 +148,12 @@
             <groupId>io.javalin</groupId>
             <artifactId>javalin</artifactId>
             <version>3.5.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.10.0.pr1</version>
         </dependency>
 
         <dependency>

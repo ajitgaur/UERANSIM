@@ -44,6 +44,10 @@ public class OctetInputStream {
         this(data, true);
     }
 
+    public OctetInputStream(OctetString data) {
+        this(data.toByteArray(), true);
+    }
+
     /************ Peek Bit ************/
 
     public int peekBitI(int offset) {
@@ -216,6 +220,16 @@ public class OctetInputStream {
         } else {
             return new Octet4(octets[3], octets[2], octets[1], octets[0]);
         }
+    }
+
+    public long readOctet4L() {
+        return readOctet4().longValue();
+    }
+
+    /************ Read Octet 8 ************/
+
+    public long readOctet8L() {
+        return readOctet4L() << 32L | readOctet4L();
     }
 
     /************ Others ************/

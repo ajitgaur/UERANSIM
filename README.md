@@ -14,6 +14,9 @@ Open source 5G UE and RAN (gNodeB) simulator. This tool can be used as UE/RAN em
 - UE | Authentication
   - EAP AKA'
   - 5G AKA
+- NAS Encryption
+    - EA1, EA2, EA3
+    - IA1, IA2, IA3
 - UE | MM Common Procedures
   - Security Mode Control
   - Identification
@@ -58,18 +61,18 @@ sudo apt install libsctp-dev lksctp-tools
 
 ## Running
 1. Select a configuration profile by modifying `config/profile.yaml`.
-2. (Optional)  You can further modify the profile configurations if you want. (`config/open5gs`, `config/free5gc`, etc.)
+2. You may need to further modify the profile configurations for IP addresses and port numbers etc. (see `config/open5gs`, `config/free5gc`, etc.)
 3. Execute `./run.sh` to start the application.
-4. Use `tail -f logs/app.log` and `tail -f logs/loadtest.log` to monitor logs realtime.
+4. Use `tail -f` to monitor logs realtime located at `logs/*.log`.
 5. Use terminal to trigger test events such as `initial-registration`
 
 ## FAQ
 
 **Q1. Why am I getting java.net.SocketException: Protocol not supported exception?**  
 
-This error usually happens if you are using some Linux VM container in Windows. Windows does not support SCTP protokol, therefore *physical Linux machine is required*. Otherwise SCTP won't work.
+This error usually happens if you are using some Linux VM container in Windows. Windows does not support SCTP protokol, therefore you *may* require a physical Linux machine depending on your VM choice.
 
-If you are using physical Linux machine, but still encounter this issue, make sure that you have Ubuntu 16.04 or later.
+Also it is possible that your specific Linux distribution does not support SCTP. However Ubuntu 16.04 and later should support it. 
 
 **Q2. Why am I getting java.net.ConnectException: Connection refused exception?**  
 
@@ -77,7 +80,7 @@ This error means SCTP connection could not established between RAN and AMF. Ther
 
 1. AMF is running and listening NGAP port (38412).
 2. AMF's NGAP IP address and port number exactly matches with gnb.yaml config file.
-3. AMF is reachable by RAN over the network. (Firewall etc.)
+3. AMF is reachable by RAN over the network. (Check firewall etc.)
   
 
 **Q3. I can't build native libraries.**
@@ -92,7 +95,3 @@ sudo apt install g++
 **Q4. How to increase the number of UE and RANs?**
 
 In order to increase the number of UEs, you can change the `number-of-UE` value in `config/testing.yaml`. Multiple RAN feature is in progress now.
-
-**Q5. Are user plane functionalities supported?**
-
-Not yet, but in progress now. 

@@ -393,6 +393,12 @@ public class NgapXerEncoder {
 
             for (int i = 0; i < nodes.getLength(); i++) {
                 var child = (Element) nodes.item(i);
+
+                // TODO: "iE-Extensions" is ignored for now. (used in at least MobilityRestrictionList)
+                if ("iE-Extensions".equals(child.getTagName())) {
+                    continue;
+                }
+
                 var memberIndex = findMemberIndex(sequence, child.getTagName());
                 if (memberIndex == -1) {
                     throw new RuntimeException("invalid member name in sequence value");
@@ -448,8 +454,12 @@ public class NgapXerEncoder {
                 throw new RuntimeException("multiple children in printable string value");
             }
 
-            var child = nodes.item(0);
-            return type.getConstructor(String.class).newInstance(child.getNodeValue());
+            if (nodes.getLength() > 0) {
+                var child = nodes.item(0);
+                return type.getConstructor(String.class).newInstance(child.getNodeValue());
+            }
+
+            return type.getConstructor(String.class).newInstance("");
         }
 
         if (NGAP_Enumerated.class.isAssignableFrom(type)) {
