@@ -1,25 +1,6 @@
 /*
- * MIT License
- *
- * Copyright (c) 2020 ALİ GÜNGÖR
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Copyright (c) 2020 ALİ GÜNGÖR (aligng1620@gmail.com)
+ * This software and all associated files are licensed under GPL-3.0.
  */
 
 package tr.havelsan.ueransim.sctp;
@@ -57,14 +38,14 @@ public class SctpClient implements ISctpClient {
     public void start() throws Exception {
         if (this.channel != null) throw new RuntimeException("start was already called");
 
-        Log.info(Tag.CONNECTION, "Trying to establish SCTP connection... (%s:%s)", remoteHost, remotePort);
+        Log.info(Tag.CONN, "Trying to establish SCTP connection... (%s:%s)", remoteHost, remotePort);
 
         this.channel = SctpChannel.open();
         this.channel.bind(new InetSocketAddress(localHost, 0));
         this.channel.connect(new InetSocketAddress(remoteHost, remotePort), 0, 0);
         this.receiving = true;
 
-        Log.info(Tag.CONNECTION, "SCTP connection established");
+        Log.info(Tag.CONN, "SCTP connection established");
     }
 
     @Override

@@ -1,35 +1,13 @@
 /*
- * MIT License
- *
- * Copyright (c) 2020 ALİ GÜNGÖR
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Copyright (c) 2020 ALİ GÜNGÖR (aligng1620@gmail.com)
+ * This software and all associated files are licensed under GPL-3.0.
  */
 
 package tr.havelsan.ueransim.app.gnb.utils;
 
 import org.apache.commons.net.ntp.TimeStamp;
-import tr.havelsan.ueransim.core.Constants;
-import tr.havelsan.ueransim.core.exceptions.EncodingException;
 import tr.havelsan.ueransim.nas.impl.enums.EMccValue;
 import tr.havelsan.ueransim.nas.impl.enums.EMncValue;
-import tr.havelsan.ueransim.nas.impl.ies.IESNssai;
 import tr.havelsan.ueransim.nas.impl.values.VPlmn;
 import tr.havelsan.ueransim.nas.impl.values.VTrackingAreaIdentity;
 import tr.havelsan.ueransim.ngap0.core.NGAP_BitString;
@@ -41,8 +19,11 @@ import tr.havelsan.ueransim.ngap0.ies.sequence_ofs.NGAP_BroadcastPLMNList;
 import tr.havelsan.ueransim.ngap0.ies.sequence_ofs.NGAP_SliceSupportList;
 import tr.havelsan.ueransim.ngap0.ies.sequence_ofs.NGAP_SupportedTAList;
 import tr.havelsan.ueransim.ngap0.ies.sequences.*;
+import tr.havelsan.ueransim.utils.Constants;
 import tr.havelsan.ueransim.utils.OctetInputStream;
 import tr.havelsan.ueransim.utils.bits.BitString;
+import tr.havelsan.ueransim.utils.exceptions.EncodingException;
+import tr.havelsan.ueransim.utils.octets.Octet;
 import tr.havelsan.ueransim.utils.octets.Octet3;
 import tr.havelsan.ueransim.utils.octets.Octet4;
 
@@ -138,18 +119,18 @@ public class NgapUtils {
         return ret;
     }
 
-    private static NGAP_SliceSupportList createSliceSupportList(IESNssai[] taiSliceSupportNssais) {
+    private static NGAP_SliceSupportList createSliceSupportList(Nssai[] taiSliceSupportNssais) {
         var res = new NGAP_SliceSupportList();
 
         if (taiSliceSupportNssais != null) {
             for (var nssai : taiSliceSupportNssais) {
                 var item = new NGAP_SliceSupportItem();
                 item.s_NSSAI = new NGAP_S_NSSAI();
-                if (nssai.sd != null) {
-                    item.s_NSSAI.sD = new NGAP_SD(nssai.sd.value.toByteArray());
+                if (nssai.sst != 0) {
+                    item.s_NSSAI.sST = new NGAP_SST(new Octet(nssai.sst).toByteArray());
                 }
-                if (nssai.sst != null) {
-                    item.s_NSSAI.sST = new NGAP_SST(nssai.sst.value.toByteArray());
+                if (nssai.sd != 0) {
+                    item.s_NSSAI.sD = new NGAP_SD(new Octet3(nssai.sd).toByteArray());
                 }
                 res.list.add(item);
             }

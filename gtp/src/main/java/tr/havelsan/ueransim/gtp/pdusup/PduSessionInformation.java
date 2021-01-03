@@ -1,9 +1,14 @@
+/*
+ * Copyright (c) 2020 ALİ GÜNGÖR (aligng1620@gmail.com)
+ * This software and all associated files are licensed under GPL-3.0.
+ */
+
 package tr.havelsan.ueransim.gtp.pdusup;
 
-import tr.havelsan.ueransim.core.exceptions.DecodingException;
 import tr.havelsan.ueransim.utils.OctetInputStream;
 import tr.havelsan.ueransim.utils.OctetOutputStream;
 import tr.havelsan.ueransim.utils.bits.Bit6;
+import tr.havelsan.ueransim.utils.exceptions.DecodingException;
 import tr.havelsan.ueransim.utils.octets.Octet;
 
 // See 3GPP 38.415

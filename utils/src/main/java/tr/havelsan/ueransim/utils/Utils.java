@@ -1,37 +1,20 @@
 /*
- * MIT License
- *
- * Copyright (c) 2020 ALİ GÜNGÖR
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Copyright (c) 2020 ALİ GÜNGÖR (aligng1620@gmail.com)
+ * This software and all associated files are licensed under GPL-3.0.
  */
 
 package tr.havelsan.ueransim.utils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import org.json.XML;
 import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
 import org.yaml.snakeyaml.Yaml;
-import tr.havelsan.ueransim.core.exceptions.DecodingException;
-import tr.havelsan.ueransim.core.exceptions.EncodingException;
 import tr.havelsan.ueransim.utils.bits.Bit;
 import tr.havelsan.ueransim.utils.bits.BitN;
+import tr.havelsan.ueransim.utils.exceptions.DecodingException;
+import tr.havelsan.ueransim.utils.exceptions.EncodingException;
 import tr.havelsan.ueransim.utils.octets.Octet;
 import tr.havelsan.ueransim.utils.octets.OctetN;
 import tr.havelsan.ueransim.utils.octets.OctetString;
@@ -45,9 +28,16 @@ import java.io.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,8 +45,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class Utils {
-
-    private static final HashSet<String> loadedResLibs = new HashSet<>();
 
     public static <T> T[] decodeList(OctetInputStream stream, Function<OctetInputStream, T> decoder, int length, Class<T> componentType) {
         int readLen = 0;
@@ -67,7 +55,7 @@ public final class Utils {
             readLen += stream.currentIndex() - streamIndex;
         }
         if (readLen > length)
-            throw new DecodingException("Value length exceeds total length!");
+            throw new DecodingException("Value l exceeds total length!");
 
         var arr = Array.newInstance(componentType, res.size());
         for (int i = 0; i < res.size(); i++) {
@@ -406,6 +394,18 @@ public final class Utils {
         return Json.toJson(map);
     }
 
+    /**
+     * Converts json string to yaml string
+     */
+    public static String convertJsonToYaml(String json) {
+        try {
+            var jsonNodeTree = new ObjectMapper().readTree(json);
+            return new YAMLMapper().writeValueAsString(jsonNodeTree);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static String getCommandLineOption(String[] args, String flag) {
         for (int i = 0; i < args.length - 1; i++) {
             if (args[i].equals(flag)) {
@@ -413,34 +413,6 @@ public final class Utils {
             }
         }
         return null;
-    }
-
-    public static synchronized void loadLibraryFromResource(String name) {
-        if (loadedResLibs.contains(name)) {
-            return;
-        }
-        try {
-            InputStream in = Utils.class.getClassLoader().getResourceAsStream(name);
-            if (in == null) {
-                throw new RuntimeException("resource not found: " + name);
-            }
-
-            byte[] buffer = new byte[1024];
-            int read;
-            File temp = File.createTempFile(name, "");
-            temp.deleteOnExit();
-
-            FileOutputStream fos = new FileOutputStream(temp);
-            while ((read = in.read(buffer)) != -1) {
-                fos.write(buffer, 0, read);
-            }
-            fos.close();
-            in.close();
-            System.load(temp.getAbsolutePath());
-            loadedResLibs.add(name);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     /**
@@ -532,6 +504,75 @@ public final class Utils {
             return Inet4Address.getByName(host).getAddress();
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static <T> List<T> merge(List<T> list1, List<T> list2) {
+        List<T> list = new ArrayList<>(list1);
+        list.addAll(list2);
+        return list;
+    }
+
+    public static String int32ToIp4String(int addr) {
+        return byteArrayToIpString(new byte[]{
+                (byte) ((addr >> 24) & 0xFF),
+                (byte) ((addr >> 16) & 0xFF),
+                (byte) ((addr >> 8) & 0xFF),
+                (byte) ((addr) & 0xFF),
+        });
+    }
+
+    public static String byteArrayToIpString(byte[] ipAddress) {
+        if (ipAddress.length == 4) {
+            return String.format("%d.%d.%d.%d", ipAddress[0] & 0xFF, ipAddress[1] & 0xFF, ipAddress[2] & 0xFF, ipAddress[3] & 0xFF);
+        } else if (ipAddress.length == 16) {
+            try {
+                return Inet6Address.getByAddress(ipAddress).getHostAddress();
+            } catch (UnknownHostException e) {
+                throw new RuntimeException(e);
+            }
+        } else throw new IllegalArgumentException("invalid ipAddress");
+    }
+
+    public static String readAllText(String path) {
+        try {
+            return Files.readString(Paths.get(path));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String downloadString(String url, int timeout) {
+        try {
+            URL u = new URL(url);
+            var connection = u.openConnection();
+            if (timeout > 0) {
+                connection.setConnectTimeout(timeout);
+                connection.setReadTimeout(timeout);
+            }
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder sb = new StringBuilder();
+
+            String s;
+            while ((s = reader.readLine()) != null)
+                sb.append(s).append("\n"); // NOTE: This way does not preserve line break character.
+            return sb.toString();
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    public static String downloadString(String url) {
+        return downloadString(url, -1);
+    }
+
+    // NOTE: I hate Java.
+    public static void runUnchecked(ThrowingRunnable runnable) {
+        try {
+            runnable.run();
+        } catch (Exception ignored) {
+
         }
     }
 }

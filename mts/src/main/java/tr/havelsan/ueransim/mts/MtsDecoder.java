@@ -1,34 +1,16 @@
 /*
- * MIT License
- *
- * Copyright (c) 2020 ALİ GÜNGÖR
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Copyright (c) 2020 ALİ GÜNGÖR (aligng1620@gmail.com)
+ * This software and all associated files are licensed under GPL-3.0.
  */
 
 package tr.havelsan.ueransim.mts;
 
+import com.google.common.base.CaseFormat;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import tr.havelsan.ueransim.core.IFileProvider;
+import tr.havelsan.ueransim.utils.IFileProvider;
 
 import java.io.File;
 import java.util.LinkedHashMap;
@@ -193,7 +175,11 @@ public class MtsDecoder {
                 } else if (entry.getKey().startsWith("@")) {
                     throw new MtsException("unrecognized keyword: %s", entry.getKey());
                 } else {
-                    properties.put(entry.getKey(), decode(entry.getValue()));
+                    String key = entry.getKey();
+                    if (ctx.isKebabCaseDecoding()) {
+                        key = CaseFormat.LOWER_HYPHEN.to(CaseFormat.LOWER_CAMEL, key);
+                    }
+                    properties.put(key, decode(entry.getValue()));
                 }
             }
 

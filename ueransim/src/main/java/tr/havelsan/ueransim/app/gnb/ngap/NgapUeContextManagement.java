@@ -1,33 +1,13 @@
 /*
- * MIT License
- *
- * Copyright (c) 2020 ALİ GÜNGÖR
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Copyright (c) 2020 ALİ GÜNGÖR (aligng1620@gmail.com)
+ * This software and all associated files are licensed under GPL-3.0.
  */
 
 package tr.havelsan.ueransim.app.gnb.ngap;
 
-import tr.havelsan.ueransim.app.common.itms.IwConnectionRelease;
-import tr.havelsan.ueransim.app.common.itms.IwDownlinkNas;
-import tr.havelsan.ueransim.app.common.simctx.GnbSimContext;
-import tr.havelsan.ueransim.itms.ItmsId;
+import tr.havelsan.ueransim.app.common.contexts.NgapGnbContext;
+import tr.havelsan.ueransim.app.common.nts.IwUeContextCreate;
+import tr.havelsan.ueransim.app.common.nts.IwUeContextUpdate;
 import tr.havelsan.ueransim.nas.NasEncoder;
 import tr.havelsan.ueransim.ngap0.ies.bit_strings.NGAP_MaskedIMEISV;
 import tr.havelsan.ueransim.ngap0.ies.bit_strings.NGAP_SecurityKey;
@@ -46,9 +26,7 @@ import tr.havelsan.ueransim.utils.console.Log;
 
 public class NgapUeContextManagement {
 
-    public static void receiveInitialContextSetup(GnbSimContext ctx, NGAP_InitialContextSetupRequest message) {
-        Log.funcIn("Handling: Initial Context Setup Request");
-
+    public static void receiveInitialContextSetup(NgapGnbContext ctx, NGAP_InitialContextSetupRequest message) {
         var ueId = NgapUeManagement.findAssociatedUeIdDefault(ctx, message);
         var ue = ctx.ueContexts.get(ueId);
 
@@ -72,34 +50,26 @@ public class NgapUeContextManagement {
 
         var nasMessage = message.getNasMessage();
         if (nasMessage != null) {
-            ctx.itms.sendMessage(ItmsId.GNB_TASK_MR, new IwDownlinkNas(ueId, NasEncoder.nasPduS(nasMessage)));
+            NgapNasTransport.deliverDlNas(ctx, ueId, NasEncoder.nasPduS(nasMessage));
         }
 
-        Log.funcOut();
+        ctx.gtpTask.push(new IwUeContextCreate(ueId, ue.aggregateMaximumBitRate));
     }
 
-    public static void receiveContextReleaseCommand(GnbSimContext ctx, NGAP_UEContextReleaseCommand message) {
-        Log.funcIn("Handling: UE Context Release Command (AMF initiated)");
-
+    public static void receiveContextReleaseCommand(NgapGnbContext ctx, NGAP_UEContextReleaseCommand message) {
         var ueId = NgapUeManagement.findAssociatedUeForUeNgapIds(ctx, message);
 
         // todo: NG-RAN node shall release all related signalling and user data transport resources
         // ...
-
-        ctx.itms.sendMessage(ItmsId.GNB_TASK_MR, new IwConnectionRelease(ueId));
 
         // send release complete message
         var response = new NGAP_UEContextReleaseComplete();
         NgapTransfer.sendNgapUeAssociated(ctx, ueId, response);
 
         ctx.ueContexts.remove(ueId);
-
-        Log.funcOut();
     }
 
-    public static void receiveContextModificationRequest(GnbSimContext ctx, NGAP_UEContextModificationRequest message) {
-        Log.funcIn("Handling: UE Context Modification Request");
-
+    public static void receiveContextModificationRequest(NgapGnbContext ctx, NGAP_UEContextModificationRequest message) {
         var ueId = NgapUeManagement.findAssociatedUeIdDefault(ctx, message);
         var ue = ctx.ueContexts.get(ueId);
 
@@ -117,7 +87,6 @@ public class NgapUeContextManagement {
                 response.addProtocolIe(NGAP_CauseMisc.UNSPECIFIED);
 
                 NgapTransfer.sendNgapUeAssociated(ctx, ueId, response);
-                Log.funcOut();
                 return;
             }
         }
@@ -141,14 +110,17 @@ public class NgapUeContextManagement {
         if (ieNewAmfUeNgapId != null) {
             long old = ue.amfUeNgapId;
             ue.amfUeNgapId = ieNewAmfUeNgapId.value;
-            Log.info(Tag.PROC, "AMF_UE_NGAP_ID changed from %d to %d.", old, ue.amfUeNgapId);
+            Log.info(Tag.FLOW, "AMF_UE_NGAP_ID changed from %d to %d.", old, ue.amfUeNgapId);
         }
 
+        // Using ieAggMaxBitRate instead of ue.ieAggMaxBitRate, because it is update but not create.
+        //  so we consider received message since the ie can be null.
+        ctx.gtpTask.push(new IwUeContextUpdate(ueId, ieAggMaxBitRate));
+
         NgapTransfer.sendNgapUeAssociated(ctx, ueId, new NGAP_UEContextModificationResponse());
-        Log.funcOut();
     }
 
-    private static boolean isUeSecurityCapabilitiesValid(GnbSimContext ctx, NGAP_UESecurityCapabilities capabilities) {
+    private static boolean isUeSecurityCapabilitiesValid(NgapGnbContext ctx, NGAP_UESecurityCapabilities capabilities) {
         // todo: check if UE security capabilities are valid
         return true;
     }

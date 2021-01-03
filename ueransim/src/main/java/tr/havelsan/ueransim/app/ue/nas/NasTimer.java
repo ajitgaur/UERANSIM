@@ -1,37 +1,16 @@
 /*
- * MIT License
- *
- * Copyright (c) 2020 ALİ GÜNGÖR
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Copyright (c) 2020 ALİ GÜNGÖR (aligng1620@gmail.com)
+ * This software and all associated files are licensed under GPL-3.0.
  */
 
 package tr.havelsan.ueransim.app.ue.nas;
 
-import tr.havelsan.ueransim.app.common.simctx.UeSimContext;
 import tr.havelsan.ueransim.nas.impl.ies.IEGprsTimer2;
 import tr.havelsan.ueransim.nas.impl.ies.IEGprsTimer3;
 import tr.havelsan.ueransim.utils.Tag;
 import tr.havelsan.ueransim.utils.console.Log;
 
 public class NasTimer {
-    public final UeSimContext ctx;
     public final int timerCode;
     public final boolean isMmTimer;
 
@@ -41,23 +20,22 @@ public class NasTimer {
 
     private long _lastDebugPrintMs;
 
-    public NasTimer(UeSimContext ctx, int timerCode, boolean isMmTimer, int defaultInterval) {
-        this.ctx = ctx;
+    public NasTimer(int timerCode, boolean isMmTimer, int defaultInterval) {
         this.timerCode = timerCode;
         this.isMmTimer = isMmTimer;
         this.interval = defaultInterval;
     }
 
-    public synchronized void start() {
+    public void start() {
         startMillis = System.currentTimeMillis();
         isRunning = true;
 
-        Log.debug(Tag.NAS_TIMER, "NAS Timer %s started with interval: %ss", timerCode, interval);
+        Log.debug(Tag.TIMER, "NAS Timer %s started with interval: %ss", timerCode, interval);
     }
 
-    public synchronized void start(IEGprsTimer2 v) {
+    public void start(IEGprsTimer2 v) {
         if (!v.hasValue()) {
-            Log.warning(Tag.NAS_TIMER, "NAS Timer %s start called but no value provided", timerCode);
+            Log.warning(Tag.TIMER, "NAS Timer %s start called but no value provided", timerCode);
             return;
         }
 
@@ -65,12 +43,12 @@ public class NasTimer {
         startMillis = System.currentTimeMillis();
         isRunning = true;
 
-        Log.debug(Tag.NAS_TIMER, "NAS Timer %s started with interval: %ss", timerCode, interval);
+        Log.debug(Tag.TIMER, "NAS Timer %s started with interval: %ss", timerCode, interval);
     }
 
-    public synchronized void start(IEGprsTimer3 v) {
+    public void start(IEGprsTimer3 v) {
         if (!v.hasValue()) {
-            Log.warning(Tag.NAS_TIMER, "NAS Timer %s start called but no value provided", timerCode);
+            Log.warning(Tag.TIMER, "NAS Timer %s start called but no value provided", timerCode);
             return;
         }
 
@@ -89,23 +67,23 @@ public class NasTimer {
         startMillis = System.currentTimeMillis();
         isRunning = true;
 
-        Log.debug(Tag.NAS_TIMER, "NAS Timer %s started with interval: %ss", timerCode, interval);
+        Log.debug(Tag.TIMER, "NAS Timer %s started with interval: %ss", timerCode, interval);
     }
 
-    public synchronized void stop() {
+    public void stop() {
         if (isRunning) {
             startMillis = System.currentTimeMillis();
             isRunning = false;
 
-            Log.debug(Tag.NAS_TIMER, "NAS Timer %s stopped", timerCode);
+            Log.debug(Tag.TIMER, "NAS Timer %s stopped", timerCode);
         }
     }
 
-    public synchronized boolean isRunning() {
+    public boolean isRunning() {
         return isRunning;
     }
 
-    public synchronized boolean performTick() {
+    public boolean performTick() {
         if (isRunning) {
             long currentMs = System.currentTimeMillis();
             long deltaSec = (currentMs - startMillis) / 1000;
@@ -113,7 +91,7 @@ public class NasTimer {
 
             if (currentMs - _lastDebugPrintMs > 10 * 1000) {
                 _lastDebugPrintMs = currentMs;
-                Log.debug(Tag.NAS_TIMER, "NAS Timer %s int:%ss rem:%ss", timerCode, interval, remainingSec);
+                Log.debug(Tag.TIMER, "NAS Timer %s int:%ss rem:%ss", timerCode, interval, remainingSec);
             }
 
             if (remainingSec < 0) {
@@ -125,9 +103,10 @@ public class NasTimer {
     }
 
     @Override
-    public synchronized String toString() {
+    public String toString() {
         return "NasTimer{" +
                 "timerCode=" + timerCode +
+                ", interval=" + interval +
                 '}';
     }
 }

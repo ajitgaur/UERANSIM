@@ -1,31 +1,56 @@
+/*
+ * Copyright (c) 2020 ALİ GÜNGÖR (aligng1620@gmail.com)
+ * This software and all associated files are licensed under GPL-3.0.
+ */
+
 package tr.havelsan.ueransim.app.gnb.app;
 
-import tr.havelsan.ueransim.app.common.itms.IwInitialSctpReady;
+import tr.havelsan.ueransim.app.common.info.GnbStatusInfo;
+import tr.havelsan.ueransim.app.common.nts.IwGnbStatusInfoRequest;
+import tr.havelsan.ueransim.app.common.nts.IwGnbStatusUpdate;
 import tr.havelsan.ueransim.app.common.simctx.GnbSimContext;
-import tr.havelsan.ueransim.itms.Itms;
-import tr.havelsan.ueransim.itms.ItmsTask;
+import tr.havelsan.ueransim.nts.nts.NtsTask;
 
-public class GnbAppTask extends ItmsTask {
+public class GnbAppTask extends NtsTask {
 
     private final GnbSimContext ctx;
-    private boolean initialSctpReady;
+    private final GnbStatusInfo statusInfo;
 
-    public GnbAppTask(Itms itms, int taskId, GnbSimContext ctx) {
-        super(itms, taskId);
+    public GnbAppTask(GnbSimContext ctx) {
         this.ctx = ctx;
+        this.statusInfo = new GnbStatusInfo();
     }
 
     @Override
-    public void main() {
+    protected void main() {
         while (true) {
-            var msg = ctx.itms.receiveMessage(this);
-            if (msg instanceof IwInitialSctpReady) {
-                initialSctpReady = true;
+            var msg = take();
+            if (msg instanceof IwGnbStatusUpdate) {
+                receiveStatusUpdate((IwGnbStatusUpdate) msg);
+            } else if (msg instanceof IwGnbStatusInfoRequest) {
+                var requester = ((IwGnbStatusInfoRequest) msg).requester;
+                var consumer = ((IwGnbStatusInfoRequest) msg).consumerFunc;
+                requester.push(() -> consumer.accept(createStatusInfo()));
             }
         }
     }
 
+    private void receiveStatusUpdate(IwGnbStatusUpdate message) {
+        switch (message.what) {
+            case IwGnbStatusUpdate.INITIAL_SCTP_ESTABLISHED:
+                statusInfo.isInitialSctpEstablished = message.isInitialSctpEstablished;
+                break;
+        }
+    }
+
+    private GnbStatusInfo createStatusInfo() {
+        var inf = new GnbStatusInfo();
+        inf.isInitialSctpEstablished = statusInfo.isInitialSctpEstablished;
+        return inf;
+    }
+
+    @Deprecated // TODO
     public boolean isInitialSctpReady() {
-        return initialSctpReady;
+        return statusInfo.isInitialSctpEstablished;
     }
 }

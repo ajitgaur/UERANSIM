@@ -1,37 +1,16 @@
 /*
- * MIT License
- *
- * Copyright (c) 2020 ALİ GÜNGÖR
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Copyright (c) 2020 ALİ GÜNGÖR (aligng1620@gmail.com)
+ * This software and all associated files are licensed under GPL-3.0.
  */
 
 package tr.havelsan.ueransim.app.gnb.ngap;
 
-import tr.havelsan.ueransim.app.app.Simulation;
-import tr.havelsan.ueransim.app.common.Guami;
+import tr.havelsan.ueransim.app.common.contexts.NgapAmfContext;
+import tr.havelsan.ueransim.app.common.contexts.NgapGnbContext;
 import tr.havelsan.ueransim.app.common.exceptions.NgapErrorException;
-import tr.havelsan.ueransim.app.common.itms.IwNgapReceive;
-import tr.havelsan.ueransim.app.common.itms.IwSctpAssociationSetup;
+import tr.havelsan.ueransim.app.common.nts.*;
 import tr.havelsan.ueransim.app.common.simctx.GnbSimContext;
-import tr.havelsan.ueransim.itms.Itms;
-import tr.havelsan.ueransim.itms.ItmsTask;
+import tr.havelsan.ueransim.nas.NasDecoder;
 import tr.havelsan.ueransim.ngap0.Ngap;
 import tr.havelsan.ueransim.ngap0.NgapXerEncoder;
 import tr.havelsan.ueransim.ngap0.core.NGAP_Value;
@@ -40,76 +19,104 @@ import tr.havelsan.ueransim.ngap0.ies.choices.NGAP_UE_NGAP_IDs;
 import tr.havelsan.ueransim.ngap0.ies.enumerations.NGAP_CauseProtocol;
 import tr.havelsan.ueransim.ngap0.ies.integers.NGAP_RAN_UE_NGAP_ID;
 import tr.havelsan.ueransim.ngap0.msg.*;
-import tr.havelsan.ueransim.ngap0.pdu.NGAP_PDU;
+import tr.havelsan.ueransim.nts.NtsId;
+import tr.havelsan.ueransim.nts.nts.NtsTask;
 import tr.havelsan.ueransim.utils.Tag;
 import tr.havelsan.ueransim.utils.Utils;
 import tr.havelsan.ueransim.utils.console.Log;
 
+public class NgapTask extends NtsTask {
 
-public class NgapTask extends ItmsTask {
+    private final NgapGnbContext ctx;
 
-    private final GnbSimContext ctx;
-
-    public NgapTask(Itms itms, int taskId, GnbSimContext ctx) {
-        super(itms, taskId);
-        this.ctx = ctx;
+    public NgapTask(GnbSimContext gnbCtx) {
+        this.ctx = new NgapGnbContext(gnbCtx);
     }
 
     @Override
-    public void main() {
+    protected void main() {
+        ctx.sctpTask = ctx.gnbCtx.nts.findTask(NtsId.GNB_TASK_SCTP);
+        ctx.rrcTask = ctx.gnbCtx.nts.findTask(NtsId.GNB_TASK_RRC);
+        ctx.gtpTask = ctx.gnbCtx.nts.findTask(NtsId.GNB_TASK_GTP);
+        ctx.appTask = ctx.gnbCtx.nts.findTask(NtsId.GNB_TASK_APP);
+
+        for (var amfConfig : ctx.gnbCtx.config.amfConfigs) {
+            var amfCtx = new NgapAmfContext();
+            amfCtx.host = amfConfig.ngapIp;
+            amfCtx.port = amfConfig.ngapPort;
+
+            ctx.amfContexts.put(amfCtx.ctxId, amfCtx);
+        }
+
+        if (ctx.amfContexts.isEmpty()) {
+            Log.error(Tag.CONFIG, "AMF contexts in GNB{%s} is empty", ctx.gnbCtx.ctxId);
+            return;
+        }
+
+        for (var amfCtx : ctx.amfContexts.values()) {
+            ctx.sctpTask.push(new IwSctpConnectionRequest(amfCtx.ctxId, amfCtx.host, amfCtx.port));
+            ctx.waitingSctpClients++;
+        }
+
         while (true) {
-            var msg = itms.receiveMessage(this);
+            var msg = take();
             if (msg instanceof IwNgapReceive) {
-                receiveNgap(((IwNgapReceive) msg).associatedAmf, ((IwNgapReceive) msg).stream, ((IwNgapReceive) msg).ngapPdu);
+                receiveNgap((IwNgapReceive) msg);
+            } else if (msg instanceof IwUplinkNas) {
+                receiveUplinkNas((IwUplinkNas) msg);
             } else if (msg instanceof IwSctpAssociationSetup) {
-                NgapInterfaceManagement.sendNgSetupRequest(ctx, ((IwSctpAssociationSetup) msg).guami);
+                receiveAssociationSetup((IwSctpAssociationSetup) msg);
             }
         }
     }
 
-    private void receiveNgap(Guami associatedAmf, int stream, NGAP_PDU ngapPdu) {
-        Log.debug(Tag.MESSAGING, "Received NGAP: %s", ngapPdu.getClass().getSimpleName());
-        Log.debug(Tag.MESSAGING, Utils.xmlToJson(NgapXerEncoder.encode(ngapPdu)));
+    private void receiveNgap(IwNgapReceive msg) {
+        var associatedAmf = msg.associatedAmf;
+        var stream = msg.stream;
+        var ngapPdu = msg.ngapPdu;
+
+        Log.debug(Tag.MSG, "Received NGAP: %s", ngapPdu.getClass().getSimpleName());
+        Log.debug(Tag.MSG, Utils.xmlToJson(NgapXerEncoder.encode(ngapPdu)));
 
         var ngapMessage = Ngap.getMessageFromPdu(ngapPdu);
         if (ngapMessage == null) {
             return;
         }
 
-        Simulation.triggerOnReceive(ctx, ngapMessage);
+        ctx.gnbCtx.sim.triggerOnReceive(ctx.gnbCtx, ngapMessage);
 
         try {
-            if (!ctx.config.ignoreStreamIds) {
+            if (!ctx.gnbCtx.config.ignoreStreamIds) {
                 NGAP_Value ie = ngapMessage.getProtocolIe(NGAP_UE_NGAP_IDs.class);
                 if (ie != null) {
                     if (stream == 0) {
-                        Log.error(Tag.CONNECTION, "received stream number == 0 in UE-associated signalling");
+                        Log.error(Tag.CONN, "received stream number == 0 in UE-associated signalling");
                         throw new NgapErrorException(NGAP_CauseProtocol.UNSPECIFIED);
                     }
                     var ueCtx = ctx.ueContexts.get(NgapUeManagement.findAssociatedUeForUeNgapIds(ctx, ngapMessage));
                     if (ueCtx.downlinkStream == 0) {
                         ueCtx.downlinkStream = stream;
                     } else if (ueCtx.downlinkStream != stream) {
-                        Log.error(Tag.CONNECTION, "received stream number is inconsistent. received %d, expected :%d", stream, ueCtx.downlinkStream);
+                        Log.error(Tag.CONN, "received stream number is inconsistent. received %d, expected :%d", stream, ueCtx.downlinkStream);
                         throw new NgapErrorException(NGAP_CauseProtocol.UNSPECIFIED);
                     }
                 } else {
                     ie = ngapMessage.getProtocolIe(NGAP_RAN_UE_NGAP_ID.class);
                     if (ie != null) {
                         if (stream == 0) {
-                            Log.error(Tag.CONNECTION, "received stream number == 0 in UE-associated signalling");
+                            Log.error(Tag.CONN, "received stream number == 0 in UE-associated signalling");
                             throw new NgapErrorException(NGAP_CauseProtocol.UNSPECIFIED);
                         }
                         var ueCtx = ctx.ueContexts.get(NgapUeManagement.findAssociatedUeIdDefault(ctx, ngapMessage));
                         if (ueCtx.downlinkStream == 0) {
                             ueCtx.downlinkStream = stream;
                         } else if (ueCtx.downlinkStream != stream) {
-                            Log.error(Tag.CONNECTION, "received stream number is inconsistent. received %d, expected :%d", stream, ueCtx.downlinkStream);
+                            Log.error(Tag.CONN, "received stream number is inconsistent. received %d, expected :%d", stream, ueCtx.downlinkStream);
                             throw new NgapErrorException(NGAP_CauseProtocol.UNSPECIFIED);
                         }
                     } else {
                         if (stream != 0) {
-                            Log.error(Tag.CONNECTION, "received stream number != 0 in non-UE-associated signalling");
+                            Log.error(Tag.CONN, "received stream number != 0 in non-UE-associated signalling");
                             throw new NgapErrorException(NGAP_CauseProtocol.UNSPECIFIED);
                         }
                     }
@@ -117,9 +124,9 @@ public class NgapTask extends ItmsTask {
             }
 
             if (ngapMessage instanceof NGAP_NGSetupResponse) {
-                NgapInterfaceManagement.receiveNgSetupResponse(ctx, (NGAP_NGSetupResponse) ngapMessage);
+                NgapInterfaceManagement.receiveNgSetupResponse(ctx, associatedAmf, (NGAP_NGSetupResponse) ngapMessage);
             } else if (ngapMessage instanceof NGAP_NGSetupFailure) {
-                NgapInterfaceManagement.receiveNgSetupFailure(ctx, (NGAP_NGSetupFailure) ngapMessage);
+                NgapInterfaceManagement.receiveNgSetupFailure(ctx, associatedAmf, (NGAP_NGSetupFailure) ngapMessage);
             } else if (ngapMessage instanceof NGAP_DownlinkNASTransport) {
                 NgapNasTransport.receiveDownlinkNasTransport(ctx, (NGAP_DownlinkNASTransport) ngapMessage);
             } else if (ngapMessage instanceof NGAP_InitialContextSetupRequest) {
@@ -133,9 +140,9 @@ public class NgapTask extends ItmsTask {
             } else if (ngapMessage instanceof NGAP_PDUSessionResourceSetupRequest) {
                 NgapPduSessionManagement.receiveResourceSetupRequest(ctx, (NGAP_PDUSessionResourceSetupRequest) ngapMessage);
             } else if (ngapMessage instanceof NGAP_ErrorIndication) {
-                Log.error(Tag.PROC, "Error indication received.");
+                NgapInterfaceManagement.receiveErrorIndication(ctx, (NGAP_ErrorIndication) ngapMessage);
             } else {
-                Log.error(Tag.MESSAGING, "Unhandled message received: %s", ngapMessage.getClass().getSimpleName());
+                Log.error(Tag.MSG, "Unhandled message received: %s", ngapMessage.getClass().getSimpleName());
             }
         } catch (NgapErrorException e) {
             var errorIndication = new NGAP_ErrorIndication();
@@ -149,5 +156,26 @@ public class NgapTask extends ItmsTask {
                 NgapTransfer.sendNgapNonUe(ctx, associatedAmf, errorIndication);
             }
         }
+    }
+
+    private void receiveUplinkNas(IwUplinkNas msg) {
+        if (!ctx.ueContexts.containsKey(msg.ue)) {
+            NgapNasTransport.receiveInitialNasTransport(ctx, msg.ue, NasDecoder.nasPdu(msg.nasPdu));
+        } else {
+            NgapNasTransport.receiveUplinkNasTransport(ctx, msg.ue, NasDecoder.nasPdu(msg.nasPdu));
+        }
+    }
+
+    private void receiveAssociationSetup(IwSctpAssociationSetup msg) {
+        ctx.amfContexts.get(msg.amfId).association = msg.association;
+
+        ctx.waitingSctpClients--;
+        if (ctx.waitingSctpClients == 0) {
+            var statusUpdate = new IwGnbStatusUpdate(IwGnbStatusUpdate.INITIAL_SCTP_ESTABLISHED);
+            statusUpdate.isInitialSctpEstablished = true;
+            ctx.appTask.push(statusUpdate);
+        }
+
+        NgapInterfaceManagement.sendNgSetupRequest(ctx, msg.amfId);
     }
 }

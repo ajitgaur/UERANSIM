@@ -1,17 +1,20 @@
+/*
+ * Copyright (c) 2020 ALİ GÜNGÖR (aligng1620@gmail.com)
+ * This software and all associated files are licensed under GPL-3.0.
+ */
+
 package tr.havelsan.ueransim.gtp;
 
-import tr.havelsan.ueransim.core.exceptions.DecodingException;
-import tr.havelsan.ueransim.core.exceptions.NotImplementedException;
-import tr.havelsan.ueransim.core.exceptions.ReservedOrInvalidValueException;
 import tr.havelsan.ueransim.gtp.ext.*;
 import tr.havelsan.ueransim.gtp.pdusup.PduSessionInformation;
 import tr.havelsan.ueransim.utils.OctetInputStream;
+import tr.havelsan.ueransim.utils.exceptions.DecodingException;
+import tr.havelsan.ueransim.utils.exceptions.NotImplementedException;
+import tr.havelsan.ueransim.utils.exceptions.ReservedOrInvalidValueException;
 import tr.havelsan.ueransim.utils.octets.OctetString;
 
 import java.util.ArrayList;
 
-// TODO: General note for GTP-U: check for IP fragmentation and fitting IP packet inside of UDP carried GTP packet
-//  (as well as hvgtptun side etc.)
 public class GtpDecoder {
 
     public static GtpMessage decode(byte[] data) {
